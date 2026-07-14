@@ -1,0 +1,2367 @@
+<script>
+  // 域名安全锁定
+  var allowedDomain = "nbn.com.my";
+  if (window.location.hostname !== "" && window.location.hostname.indexOf(allowedDomain) === -1) {
+      document.body.innerHTML = "<h1>非法访问：该模型仅限官方网站使用</h1>";
+      window.stop(); 
+  }
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>NBN Cubicle Studio · True 3D</title>
+<style>
+  :root {
+    --bg-deep: #0a0e1a;
+    --bg-panel: #111827;
+    --bg-elev: #1a2236;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.16);
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --text-tertiary: #6b7280;
+    --accent: #c9a961;
+    --accent-hover: #d4b87a;
+    --accent-dim: rgba(201,169,97,0.12);
+    --whatsapp: #25d366;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg-deep); color: var(--text-primary); -webkit-font-smoothing: antialiased; overscroll-behavior: none; }
+  button { font-family: inherit; }
+
+  body { display: flex; height: 100vh; height: 100dvh; }
+
+  .sidebar {
+    width: 360px; flex-shrink: 0;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto; overflow-x: hidden;
+  }
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  .viewer {
+    position: relative; flex: 1;
+    background: #2a2f3e;
+    overflow: hidden;
+  }
+  #canvas-container { width: 100%; height: 100%; touch-action: none; }
+
+  .mobile-topbar {
+    display: none;
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: calc(12px + var(--safe-top)) 16px 12px;
+    background: linear-gradient(to bottom, rgba(10,14,26,0.95), rgba(10,14,26,0));
+    z-index: 15; pointer-events: none;
+  }
+  .mobile-topbar svg { width: 64px; height: auto; color: var(--text-primary); display: block; }
+
+  .viewer-header {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 20px 28px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    pointer-events: none; z-index: 10;
+  }
+  .viewer-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 500; letter-spacing: 1px; }
+  .viewer-title .accent { color: var(--accent); font-style: italic; }
+  .viewer-subtitle { font-size: 10px; letter-spacing: 2px; color: var(--text-tertiary); margin-top: 4px; }
+  .viewer-hints {
+    background: rgba(17,24,39,0.6); backdrop-filter: blur(10px);
+    border: 1px solid var(--border); padding: 8px 14px; border-radius: 20px;
+    font-size: 10px; color: var(--text-secondary); letter-spacing: 1px;
+  }
+  .viewer-hints kbd {
+    background: var(--bg-elev); border: 1px solid var(--border-strong);
+    padding: 1px 5px; border-radius: 3px; font-size: 9px; margin: 0 2px;
+  }
+
+  .tile-row {
+    position: absolute;
+    top: 74px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(17,24,39,0.8); backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 100px;
+    z-index: 10;
+    pointer-events: auto;
+  }
+  .tile-label { font-size: 9px; letter-spacing: 1px; color: var(--text-tertiary); white-space: nowrap; }
+  .tile-chips { display: flex; gap: 5px; flex-wrap: nowrap; }
+  .tile-chip { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; transition: transform 0.12s, border-color 0.12s; flex-shrink: 0; }
+  .tile-chip:hover { transform: scale(1.2); }
+  .tile-chip.active { border-color: var(--accent); transform: scale(1.3); }
+  @media (max-width: 900px) {
+    .tile-row { top: auto; bottom: calc(120px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); padding: 4px 10px; gap: 4px; border-radius: 100px; }
+    .tile-label { display: none; }
+    .tile-chip { width: 16px; height: 16px; }
+  }
+
+  .viewer-controls {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 4px;
+    background: rgba(17,24,39,0.85); backdrop-filter: blur(10px);
+    border: 1px solid var(--border); padding: 5px; border-radius: 100px;
+    z-index: 10;
+  }
+  .vc-btn {
+    background: transparent; border: none; color: var(--text-secondary);
+    padding: 8px 14px; border-radius: 100px; cursor: pointer;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.5px;
+    transition: all 0.15s;
+  }
+  .vc-btn:hover { color: var(--text-primary); background: var(--bg-elev); }
+  .vc-btn.active { background: var(--accent); color: var(--bg-deep); }
+
+  .config-chip {
+    position: absolute; top: 24px; right: 24px;
+    background: rgba(17,24,39,0.85); backdrop-filter: blur(10px);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 18px; pointer-events: none; min-width: 200px; z-index: 10;
+  }
+  .config-chip-series { font-size: 10px; letter-spacing: 2px; color: var(--text-tertiary); margin-bottom: 4px; }
+  .config-chip-name { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--accent); font-weight: 500; margin-bottom: 8px; }
+  .config-chip-stat { font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+  .config-chip-stat span { color: var(--text-primary); font-weight: 500; }
+
+  .brand { padding: 24px 24px 20px; border-bottom: 1px solid var(--border); }
+  .brand-logo { width: 100px; height: auto; color: var(--text-primary); display: block; margin-bottom: 8px; }
+  .brand-tag { font-size: 10px; letter-spacing: 3px; color: var(--text-tertiary); text-transform: uppercase; }
+
+  .section { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  .section:last-of-type { border-bottom: none; }
+  .section-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+    color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 14px;
+  }
+  .section-title .num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent-dim); color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-family: 'Cormorant Garamond', serif; font-weight: 700;
+  }
+
+  .series-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .series-btn {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    color: var(--text-secondary); padding: 12px 6px; border-radius: 6px;
+    cursor: pointer; transition: all 0.15s;
+    text-align: center; font-size: 14px; font-weight: 600; min-height: 48px;
+  }
+  .series-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+  .series-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-deep); }
+  .series-btn .label { display: block; font-size: 9px; opacity: 0.6; margin-top: 2px; font-weight: 500; letter-spacing: 0.5px; }
+  .series-btn.active .label { opacity: 0.85; }
+
+  .series-desc {
+    margin-top: 12px; padding: 10px 12px;
+    background: var(--bg-deep); border: 1px solid var(--border);
+    border-left: 2px solid var(--accent); border-radius: 4px;
+    font-size: 11px; color: var(--text-secondary); line-height: 1.5;
+  }
+  .series-desc strong { color: var(--accent); font-weight: 600; }
+
+  .element-tabs {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    margin-bottom: 14px; background: var(--bg-deep); padding: 4px;
+    border-radius: 8px; border: 1px solid var(--border);
+  }
+  .element-tab {
+    background: transparent; border: none; color: var(--text-secondary);
+    font-size: 12px; font-weight: 500; padding: 10px 4px;
+    cursor: pointer; border-radius: 5px; transition: all 0.15s; min-height: 40px;
+  }
+  .element-tab:hover { color: var(--text-primary); }
+  .element-tab.active { background: var(--bg-elev); color: var(--accent); }
+
+  .mat-toggle {
+    display: flex; background: var(--bg-deep); border: 1px solid var(--border);
+    border-radius: 6px; padding: 3px; margin-bottom: 14px;
+  }
+  .mat-toggle button {
+    flex: 1; background: transparent; border: none; color: var(--text-secondary);
+    padding: 9px; font-size: 11px; font-weight: 600; letter-spacing: 1px;
+    cursor: pointer; border-radius: 4px; transition: all 0.15s; min-height: 36px;
+  }
+  .mat-toggle button.active { background: var(--bg-elev); color: var(--accent); }
+
+  .swatch-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
+  .swatch {
+    position: relative; aspect-ratio: 1; border-radius: 6px;
+    border: 2px solid transparent; cursor: pointer; overflow: hidden;
+    transition: transform 0.15s, border-color 0.15s;
+    min-height: 48px; min-width: 48px;
+  }
+  .swatch:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+  .swatch.active { border-color: var(--accent); transform: translateY(-2px); }
+  .swatch.active::after {
+    content: '✓'; position: absolute; top: 2px; right: 4px;
+    color: white; font-size: 11px; font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+  .swatch-fill { width: 100%; height: 100%; }
+  .swatch-code {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+    color: white; font-size: 8px; font-weight: 600;
+    padding: 6px 3px 2px; text-align: center; letter-spacing: 0.3px;
+  }
+
+  .swatch-info {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .swatch-info-chip { width: 40px; height: 40px; border-radius: 6px; border: 1px solid var(--border-strong); flex-shrink: 0; }
+  .swatch-info-meta { flex: 1; min-width: 0; }
+  .swatch-info-code { font-size: 10px; color: var(--accent); letter-spacing: 1px; font-weight: 600; }
+  .swatch-info-name { font-size: 13px; color: var(--text-primary); margin-top: 2px; }
+
+  .dim-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 12px; color: var(--text-secondary); }
+  .dim-row label { font-weight: 500; }
+  .dim-buttons { display: flex; gap: 4px; }
+  .dim-btn {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    color: var(--text-secondary); padding: 8px 11px; border-radius: 4px;
+    cursor: pointer; font-size: 11px; transition: all 0.15s; min-height: 36px;
+  }
+  .dim-btn:hover { color: var(--text-primary); }
+  .dim-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg-deep); font-weight: 600; }
+
+  .slider-row { margin-bottom: 14px; }
+  .slider-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .slider-label .val { color: var(--accent); font-weight: 600; }
+  input[type="range"] { width: 100%; -webkit-appearance: none; background: transparent; cursor: pointer; padding: 8px 0; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: var(--bg-elev); border-radius: 2px; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; height: 22px; width: 22px; border-radius: 50%;
+    background: var(--accent); margin-top: -9px;
+    border: 2px solid var(--bg-deep); box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  input[type="range"]::-moz-range-track { height: 4px; background: var(--bg-elev); border-radius: 2px; }
+  input[type="range"]::-moz-range-thumb { height: 22px; width: 22px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg-deep); }
+
+  .spec-output {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px;
+    font-size: 11px; line-height: 1.7; color: var(--text-secondary);
+    margin-bottom: 12px; font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  }
+  .spec-output strong { color: var(--accent); font-weight: 600; }
+  .spec-line { margin-bottom: 4px; }
+
+  .btn-whatsapp {
+    width: 100%; background: var(--whatsapp); color: white; border: none;
+    padding: 14px; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform 0.1s; min-height: 48px;
+  }
+  .btn-whatsapp:hover { transform: translateY(-1px); }
+  .btn-whatsapp:active { transform: translateY(0); }
+
+  #loader {
+    position: absolute; inset: 0; background: var(--bg-deep);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; transition: opacity 0.4s;
+  }
+  #loader.hidden { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .sheet-fab {
+    display: none;
+    position: absolute;
+    bottom: calc(110px + var(--safe-bottom));
+    right: 16px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--whatsapp); color: white; border: none;
+    cursor: pointer; z-index: 28;
+    box-shadow: 0 8px 24px rgba(37,211,102,0.45), 0 2px 8px rgba(0,0,0,0.3);
+    align-items: center; justify-content: center;
+    transition: transform 0.2s;
+  }
+  .sheet-fab:active { transform: scale(0.92); }
+  .sheet-fab svg { width: 26px; height: 26px; }
+
+  .sheet-backdrop {
+    display: none; position: absolute; inset: 0;
+    background: rgba(0,0,0,0.15);
+    z-index: 25;
+    opacity: 0; transition: opacity 0.25s;
+    pointer-events: auto;
+  }
+  .sheet-backdrop.open { opacity: 1; }
+
+  .mobile-mini {
+    display: none;
+    position: absolute; bottom: var(--safe-bottom); left: 0; right: 0;
+    background: rgba(17,24,39,0.95); backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 14px 16px; z-index: 20; cursor: pointer;
+  }
+  .mobile-mini-handle {
+    width: 36px; height: 4px;
+    background: var(--border-strong); border-radius: 2px;
+    margin: -6px auto 10px;
+  }
+  .mobile-mini-row { display: flex; align-items: center; gap: 12px; }
+  .mobile-mini-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px; color: var(--accent); font-weight: 500; line-height: 1;
+  }
+  .mobile-mini-stats { flex: 1; font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+  .mobile-mini-stats span { color: var(--text-primary); font-weight: 500; }
+  .mobile-mini-cta {
+    background: var(--whatsapp); color: white; border: none;
+    padding: 8px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 600; flex-shrink: 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .mobile-mini-cta svg { width: 14px; height: 14px; }
+
+  .sheet-close { display: none; }
+
+
+  @supports (-webkit-touch-callout: none) {
+    .sidebar { -webkit-overflow-scrolling: touch; }
+  }
+
+  /* ============================================================
+     MOBILE COMPACT BAR — horizontal scrolling controls
+     ============================================================ */
+  .mobile-compact {
+    display: none;
+    height: 100%;
+    flex-direction: column;
+    padding: 14px 0 0;
+  }
+
+  /* Section tabs (Series · Door · Divider · Front · Size) */
+  .mc-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 14px 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid var(--border);
+  }
+  .mc-tabs::-webkit-scrollbar { display: none; }
+  .mc-tab {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 7px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mc-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg-deep);
+  }
+
+  /* Horizontal scroll panel for current section content */
+  .mc-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .mc-pane {
+    position: absolute;
+    inset: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    display: none;
+    padding: 12px 14px;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .mc-pane::-webkit-scrollbar { display: none; }
+  .mc-pane.active { display: flex; }
+
+  /* Mini swatch pill (horizontal scroll) */
+  .mc-swatch {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.12s, border-color 0.12s;
+  }
+  .mc-swatch.active {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .mc-swatch.active::after {
+    content: '✓';
+    position: absolute;
+    top: 1px; right: 3px;
+    color: white; font-size: 9px; font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+  .mc-swatch-fill { width: 100%; height: 100%; }
+  .mc-swatch-code {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+    color: white;
+    font-size: 7px;
+    font-weight: 700;
+    padding: 6px 2px 2px;
+    text-align: center;
+    letter-spacing: 0.2px;
+  }
+
+  /* Series chip (mobile, larger touch) */
+  .mc-series {
+    flex-shrink: 0;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 56px; height: 56px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700;
+    transition: all 0.15s;
+  }
+  .mc-series.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg-deep);
+  }
+  .mc-series-label {
+    font-size: 7px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+    opacity: 0.7;
+    text-transform: uppercase;
+  }
+
+  /* Material toggle in mobile (Solid/Wood) */
+  .mc-mattoggle {
+    flex-shrink: 0;
+    display: flex;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+    margin-right: 4px;
+    height: 48px;
+    flex-direction: column;
+    width: 44px;
+  }
+  .mc-mattoggle button {
+    flex: 1;
+    background: transparent; border: none;
+    color: var(--text-secondary);
+    font-size: 9px; font-weight: 700; letter-spacing: 0.4px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .mc-mattoggle button.active {
+    background: var(--bg-elev);
+    color: var(--accent);
+  }
+
+  /* Dimension chip in mobile */
+  .mc-dim {
+    flex-shrink: 0;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    height: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+  }
+  .mc-dim.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg-deep);
+  }
+  .mc-dim small {
+    display: block;
+    font-size: 9px;
+    font-weight: 500;
+    opacity: 0.7;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* Stalls/Width slider chip */
+  .mc-slider-chip {
+    flex-shrink: 0;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    height: 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 140px;
+  }
+  .mc-slider-chip-label {
+    font-size: 9px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .mc-slider-chip-label .v {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 11px;
+  }
+  .mc-slider-chip input[type="range"] {
+    width: 100%;
+    margin: 0;
+    padding: 4px 0;
+  }
+  .mc-slider-chip input[type="range"]::-webkit-slider-thumb {
+    height: 18px; width: 18px;
+    margin-top: -7px;
+  }
+
+  /* Expand button to open full sheet */
+  .mc-expand {
+    flex-shrink: 0;
+    background: var(--bg-elev);
+    border: 1px solid var(--border-strong);
+    color: var(--accent);
+    width: 64px; height: 64px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+  }
+  .mc-expand svg { width: 18px; height: 18px; }
+
+  /* Element pill selector inside Color tab (Door / Divider / Front) */
+  .mc-elem-selector {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    height: 48px;
+    margin-right: 4px;
+  }
+  .mc-elem-pill {
+    flex: 1;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 0 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 90px;
+    transition: all 0.15s;
+  }
+  .mc-elem-pill.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .mc-elem-chip {
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border-strong);
+    flex-shrink: 0;
+  }
+  .mc-elem-name { letter-spacing: 0.5px; }
+
+  /* Summary card on Enquire tab */
+  .mc-summary {
+    flex-shrink: 0;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    height: 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 200px;
+  }
+  .mc-summary-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    color: var(--accent);
+    font-weight: 600;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .mc-summary-stat {
+    font-size: 10px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .mc-send-btn {
+    flex-shrink: 0;
+    background: var(--whatsapp);
+    border: none;
+    color: white;
+    height: 64px;
+    padding: 0 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+  }
+  .mc-send-btn:active { transform: scale(0.97); }
+
+  /* ============================================================
+     MOBILE BOTTOM SIZE BAR — pinned to bottom, 2-row layout
+     ============================================================ */
+  .mobile-bottom-size {
+    display: none;
+    position: absolute;
+    bottom: calc(8px + var(--safe-bottom));
+    left: 8px;
+    right: 8px;
+    z-index: 12;
+    background: rgba(17,24,39,0.92);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 10px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  }
+  .mobile-bottom-size-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+  .mobile-bottom-size-row::-webkit-scrollbar { display: none; }
+  .mobile-bottom-size-row + .mobile-bottom-size-row {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  .mts-label {
+    font-size: 9px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 0 4px 0 2px;
+    flex-shrink: 0;
+    min-width: 14px;
+  }
+  .mts-pill {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    min-height: 30px;
+  }
+  .mts-pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg-deep);
+  }
+  .mts-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--border);
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+  .mts-slider {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    flex: 1;
+    display: inline-flex;
+    flex-direction: column;
+    min-width: 130px;
+  }
+  .mts-slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 8px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .mts-slider-label .v {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 10px;
+  }
+  .mts-slider input[type="range"] {
+    width: 100%;
+    margin: 0;
+    padding: 2px 0;
+    -webkit-appearance: none;
+    background: transparent;
+  }
+  .mts-slider input[type="range"]::-webkit-slider-runnable-track {
+    height: 3px; background: var(--bg-deep); border-radius: 2px;
+  }
+  .mts-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px; width: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: -6px;
+    border: 1.5px solid var(--bg-deep);
+  }
+
+  /* ============================================================
+     MOBILE LEFT RAIL — Set N to E, vertical, on left edge
+     ============================================================ */
+  .mobile-left-rail {
+    display: none;
+    position: absolute;
+    left: 8px;
+    top: calc(82px + var(--safe-top));
+    bottom: calc(110px + var(--safe-bottom));
+    z-index: 12;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 6px;
+    background: rgba(17,24,39,0.88);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .mobile-left-rail::-webkit-scrollbar { display: none; }
+  .mlr-btn {
+    flex-shrink: 0;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 42px; height: 42px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    transition: all 0.15s;
+  }
+  .mlr-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg-deep);
+  }
+  .mlr-btn-label {
+    font-size: 7px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    opacity: 0.65;
+    text-transform: uppercase;
+    margin-top: -2px;
+  }
+
+  /* ============================================================
+     MOBILE RIGHT RAIL — Door / Divider / Front, vertical, on right
+     ============================================================ */
+  .mobile-right-rail {
+    display: none;
+    position: absolute;
+    right: 8px;
+    top: calc(82px + var(--safe-top));
+    z-index: 12;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px;
+    background: rgba(17,24,39,0.88);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .mrr-btn {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 56px; height: 56px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: all 0.15s;
+    padding: 4px;
+  }
+  .mrr-btn.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
+  .mrr-btn.active .mrr-label { color: var(--accent); }
+  .mrr-chip {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    border: 1px solid var(--border-strong);
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+  }
+  .mrr-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+
+  /* ============================================================
+     MOBILE COLOR DRAWER — slim slide-in from right, 2-column grid
+     ============================================================ */
+  .mobile-color-drawer {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(82px + var(--safe-top));
+    bottom: calc(110px + var(--safe-bottom));
+    width: 140px;
+    max-width: 140px;
+    z-index: 22;
+    background: rgba(13,18,28,0.96);
+    backdrop-filter: blur(24px);
+    border-left: 1px solid var(--border-strong);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    border-radius: 14px 0 0 14px;
+    padding: 12px 10px;
+    box-shadow: -12px 0 32px rgba(0,0,0,0.5);
+    transform: translateX(110%);
+    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+    flex-direction: column;
+    gap: 8px;
+  }
+  .mobile-color-drawer.open {
+    display: flex;
+    transform: translateX(0);
+  }
+  .mcd-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .mcd-target {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 15px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .mcd-close {
+    width: 24px; height: 24px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mcd-close svg { width: 11px; height: 11px; }
+  .mcd-toggle {
+    display: flex;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+    flex-shrink: 0;
+  }
+  .mcd-toggle button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .mcd-toggle button.active {
+    background: var(--bg-elev);
+    color: var(--accent);
+  }
+  .mcd-swatches {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    padding-right: 2px;
+  }
+  .mcd-swatches::-webkit-scrollbar { width: 3px; }
+  .mcd-swatches::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+  .mcd-swatch {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.12s, border-color 0.12s;
+  }
+  .mcd-swatch.active {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .mcd-swatch.active::after {
+    content: '✓';
+    position: absolute;
+    top: 1px; right: 3px;
+    color: white; font-size: 10px; font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+  .mcd-swatch-fill { width: 100%; height: 100%; }
+  .mcd-swatch-code {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.78), transparent);
+    color: white;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 8px 3px 3px;
+    text-align: center;
+    letter-spacing: 0.3px;
+  }
+
+  /* ============================================================
+     COLOR PREVIEW OVERLAY — pops up above 3D when picking color
+     ============================================================ */
+  .color-preview {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    z-index: 18;
+    background: rgba(17,24,39,0.92);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 14px 18px;
+    display: none;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s, transform 0.18s;
+    min-width: 220px;
+  }
+  .color-preview.visible {
+    display: flex;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .color-preview-chip {
+    width: 56px; height: 56px;
+    border-radius: 10px;
+    border: 2px solid var(--border-strong);
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.2);
+  }
+  .color-preview-meta { flex: 1; min-width: 0; }
+  .color-preview-code {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .color-preview-name {
+    font-size: 16px;
+    color: var(--text-primary);
+    font-weight: 500;
+    font-family: 'Cormorant Garamond', serif;
+  }
+  .color-preview-target {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-weight: 600;
+    background: rgba(201,169,97,0.12);
+    padding: 3px 10px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  @media (max-width: 900px) {
+    /* Hide all desktop sidebar/sheet stuff on mobile */
+    .sidebar { display: none !important; }
+    .sheet-backdrop { display: none !important; }
+    .sheet-close { display: none !important; }
+    .mobile-mini { display: none !important; }
+    .mobile-compact { display: none !important; }
+
+    /* Mobile-specific UI all visible */
+    .mobile-topbar { display: block; }
+    .mobile-left-rail { display: flex; }
+    .mobile-right-rail { display: flex; }
+    .mobile-bottom-size { display: block; }
+    .sheet-fab { display: flex; }
+
+    /* Hide desktop viewer header / chip — replaced by rails */
+    .viewer-header { display: none; }
+    .config-chip { display: none; }
+
+    /* Camera presets — top-center, between left rail and right rail */
+    .viewer-controls {
+      bottom: auto;
+      top: calc(48px + var(--safe-top));
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      padding: 4px;
+    }
+    .vc-btn { padding: 6px 9px; font-size: 9px; min-height: 30px; letter-spacing: 0.3px; }
+  }
+
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <button class="sheet-close" id="sheet-close" aria-label="Close">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+
+  <div class="brand">
+<img src="data:image/png;base64,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" alt="NBN" class="brand-logo">
+    <div class="brand-tag">Cubicle Studio · True 3D</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="num">1</span>Series</div>
+    <div class="series-grid" id="series-grid"></div>
+    <div class="series-desc" id="series-desc"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="num">2</span>Panel Finishes</div>
+    <div class="element-tabs" id="element-tabs">
+      <button class="element-tab active" data-element="door">Door</button>
+      <button class="element-tab" data-element="divider">Divider</button>
+      <button class="element-tab" data-element="front">Front</button>
+    </div>
+    <div class="mat-toggle">
+      <button class="active" data-cat="solid">SOLID</button>
+      <button data-cat="wood">WOOD</button>
+    </div>
+    <div class="swatch-grid" id="swatch-grid"></div>
+    <div class="swatch-info">
+      <div class="swatch-info-chip" id="active-chip"></div>
+      <div class="swatch-info-meta">
+        <div class="swatch-info-code" id="active-code">—</div>
+        <div class="swatch-info-name" id="active-name">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="num">3</span>Dimensions</div>
+    <div class="dim-row">
+      <label>Overall H</label>
+      <div class="dim-buttons" id="height-buttons">
+        <button class="dim-btn" data-h="2000">2000</button>
+        <button class="dim-btn active" data-h="2100">2100</button>
+        <button class="dim-btn" data-h="2400">2400</button>
+        <button class="dim-btn" data-h="3000">3000</button>
+      </div>
+    </div>
+    <div class="dim-row">
+      <label>Thickness</label>
+      <div class="dim-buttons" id="thick-buttons">
+        <button class="dim-btn" data-t="10">10mm</button>
+        <button class="dim-btn active" data-t="12">12mm</button>
+      </div>
+    </div>
+    <div class="dim-row" id="door-height-row" style="display:none">
+      <label>Door H</label>
+      <div class="dim-buttons" id="door-height-buttons"></div>
+    </div>
+    <div class="slider-row">
+      <div class="slider-label"><span>Stalls</span><span class="val" id="stalls-val">3</span></div>
+      <input type="range" id="stalls" min="1" max="6" value="3">
+    </div>
+    <div class="slider-row">
+      <div class="slider-label"><span>Stall Width</span><span class="val" id="width-val">900mm</span></div>
+      <input type="range" id="width" min="800" max="1500" step="50" value="900">
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="num">4</span>Spec Sheet</div>
+    <div class="spec-output" id="spec-output"></div>
+    <button class="btn-whatsapp" id="whatsapp-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.83 9.83 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.82 11.82 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.82 11.82 0 0 0 20.464 3.488"/></svg>
+      Send to WhatsApp
+    </button>
+  </div>
+</aside>
+
+<div class="sheet-backdrop" id="sheet-backdrop"></div>
+
+<main class="viewer">
+  <div id="loader"><div class="spinner"></div></div>
+
+  <div class="mobile-topbar">
+<img src="data:image/png;base64,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" alt="NBN" style="height:28px;width:auto;display:block">
+  </div>
+
+  <!-- MOBILE: Left rail — Set series N to E -->
+  <div class="mobile-left-rail" id="mobile-left-rail"></div>
+
+  <!-- MOBILE: Right rail — Door / Divider / Front element selector -->
+  <div class="mobile-right-rail" id="mobile-right-rail">
+    <button class="mrr-btn active" data-element="door">
+      <span class="mrr-chip" id="mrr-chip-door"></span>
+      <span class="mrr-label">Door</span>
+    </button>
+    <button class="mrr-btn" data-element="divider">
+      <span class="mrr-chip" id="mrr-chip-divider"></span>
+      <span class="mrr-label">Div</span>
+    </button>
+    <button class="mrr-btn" data-element="front">
+      <span class="mrr-chip" id="mrr-chip-front"></span>
+      <span class="mrr-label">Frt</span>
+    </button>
+  </div>
+
+  <!-- MOBILE: Color drawer — slides in from right when element button is tapped -->
+  <div class="mobile-color-drawer" id="mobile-color-drawer">
+    <div class="mcd-header">
+      <span class="mcd-target" id="mcd-target">Door Color</span>
+      <button class="mcd-close" id="mcd-close" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="mcd-toggle" id="mcd-toggle">
+      <button class="active" data-cat="solid">SOLID</button>
+      <button data-cat="wood">WOOD</button>
+    </div>
+    <div class="mcd-swatches" id="mcd-swatches"></div>
+  </div>
+
+  <!-- MOBILE: Bottom size bar — always visible, never blocks 3D -->
+  <div class="mobile-bottom-size" id="mobile-bottom-size"></div>
+
+  <!-- MOBILE: Color preview overlay (shown briefly when picking a color) -->
+  <div class="color-preview" id="color-preview">
+    <div class="color-preview-chip" id="cp-chip"></div>
+    <div class="color-preview-meta">
+      <div class="color-preview-code" id="cp-code">PCB 044</div>
+      <div class="color-preview-name" id="cp-name">Dark Grey</div>
+    </div>
+    <div class="color-preview-target" id="cp-target">applied to door</div>
+  </div>
+
+  <div class="viewer-header">
+    <div>
+      <div class="viewer-title">NBN <span class="accent">Cubicle</span> Studio</div>
+      <div class="viewer-subtitle">TRUE 3D · ARCHITECTURAL CONFIGURATOR</div>
+    </div>
+    <div class="viewer-hints">
+      <kbd>DRAG</kbd> orbit · <kbd>SCROLL</kbd> zoom · <kbd>R</kbd> reset
+    </div>
+  </div>
+
+  <div class="tile-row">
+    <span class="tile-label">Floor/Wall</span>
+    <div class="tile-chips" id="tile-chips"></div>
+  </div>
+
+  <div class="config-chip">
+    <div class="config-chip-series" id="chip-series">SERIES · SET N</div>
+    <div class="config-chip-name" id="chip-name">Set N</div>
+    <div class="config-chip-stat" id="chip-stat">
+      <span>3</span> stalls · <span>2100mm</span> H · <span>12mm</span> panel
+    </div>
+  </div>
+
+  <div class="viewer-controls">
+    <button class="vc-btn active" data-view="iso">3/4</button>
+    <button class="vc-btn" data-view="front">Front</button>
+    <button class="vc-btn" data-view="side">Side</button>
+    <button class="vc-btn" data-view="plan">Plan</button>
+  </div>
+
+  <button class="sheet-fab" id="sheet-fab" aria-label="Send via WhatsApp">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.83 9.83 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.82 11.82 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.82 11.82 0 0 0 20.464 3.488"/></svg>
+  </button>
+
+  <div class="mobile-mini" id="mobile-mini">
+    <div class="mobile-mini-handle"></div>
+    <div class="mobile-mini-row">
+      <div><div class="mobile-mini-name" id="mini-name">Set N</div></div>
+      <div class="mobile-mini-stats" id="mini-stats">
+        <span>3</span> stalls · <span>2100mm</span><br>
+        <span>12mm</span> · <span>2736mm</span> run
+      </div>
+      <button class="mobile-mini-cta" id="mini-cta">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.83 9.83 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.82 11.82 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.82 11.82 0 0 0 20.464 3.488"/></svg>
+        Enquire
+      </button>
+    </div>
+  </div>
+
+  <div id="canvas-container"></div>
+</main>
+
+<!-- Three.js r134 — last version with classic UMD OrbitControls in examples/js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+// Loader timeout — if Three.js doesn't load in 10s, show an error
+const loadTimeout = setTimeout(() => {
+  if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') {
+    document.getElementById('loader').innerHTML = '<div style="color:#c9a961;text-align:center;padding:20px;font-family:sans-serif"><div style="font-size:14px;margin-bottom:8px">⚠️ Loading failed</div><div style="font-size:11px;color:#9ca3af">Check your connection and refresh</div></div>';
+  }
+}, 10000);
+
+window.addEventListener('load', () => {
+  if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') return;
+  clearTimeout(loadTimeout);
+  initApp();
+});
+
+function initApp() {
+
+const SOLID_SWATCHES = [
+  { code: 'PCB 010', name: 'Titan White',   color: '#eef0ed' },
+  { code: 'PCB 011', name: 'White Beige',   color: '#e6dfd0' },
+  { code: 'PCB 022', name: 'Beige',         color: '#d8c9b0' },
+  { code: 'PCB 068', name: 'Light Brown',   color: '#b8a384' },
+  { code: 'PCB 088', name: 'Apple Maroon',  color: '#7d6a5e' },
+  { code: 'PCB 033', name: 'Light Grey',    color: '#cdcbc6' },
+  { code: 'PCB 044', name: 'Dark Grey',     color: '#5a5b5d' },
+  { code: 'PCB 050', name: 'Black',         color: '#1c1d1f' },
+  { code: 'PCB 056', name: 'Ocean Blue',    color: '#4ba0d4' },
+  { code: 'PCB 068B',name: 'Dark Blue',     color: '#1f4e95' },
+  { code: 'PCB 055', name: 'Pink',          color: '#f4c8cd' },
+  { code: 'PCB 078', name: 'Apple Green',   color: '#a8c93b' },
+  { code: 'PCB 099', name: 'Bright Yellow', color: '#f5cf2a' },
+  { code: 'PCB 111', name: 'Orange',        color: '#ec7426' },
+  { code: 'PCB 115', name: 'Red',           color: '#d63329' },
+];
+
+const WOOD_SWATCHES = [
+  { code: 'PCB 809', name: 'Oak',             color: '#bca576' },
+  { code: 'PCB 811', name: 'Dark Walnut',     color: '#5e4a35' },
+  { code: 'PCB 825', name: 'Classic Fineline',color: '#8d6e51' },
+  { code: 'PCB 826', name: 'Grey Pineline',   color: '#5d5a52' },
+  { code: 'PCB 836', name: 'African Fineline',color: '#9c7d5d' },
+  { code: 'PCB 837', name: 'Greece Fineline', color: '#5d6a6d' },
+  { code: 'PCB 844', name: 'White Ash',       color: '#c5b39a' },
+  { code: 'PCB 860', name: 'Blond Yew',       color: '#cdbf9a' },
+  { code: 'PCB 861', name: 'Olive Yew',       color: '#9b9382' },
+  { code: 'PCB 888', name: 'Bali Teak',       color: '#7e6a52' },
+  { code: 'PCB 897', name: 'Acacia Stripe',   color: '#998871' },
+  { code: 'PCB 925', name: 'Prime Oak',       color: '#a89072' },
+  { code: 'PCB 932', name: 'Jawa Teak',       color: '#a8956f' },
+  { code: 'PCB 933', name: 'Pearl Wood',      color: '#c2b89a' },
+  { code: 'PCB 937', name: 'Golden Teak',     color: '#b08a5c' },
+  { code: 'PCB 984', name: 'Old Beam',        color: '#7c7672' },
+];
+
+const SERIES_DATA = {
+  N: { code: 'N', name: 'Set N', desc: 'Industry · Nylon (BK) · heavy duty',     hardware: 'nylon',     base: 'foot',     thicknesses: [10,12], heights: [2000,2100,2400] },
+  S: { code: 'S', name: 'Set S', desc: 'Style · Stainless Steel · luxury',       hardware: 'stainless', base: 'foot',     thicknesses: [10,12], heights: [2000,2100,2400] },
+  B: { code: 'B', name: 'Set B', desc: 'Box · legless · modern appearance',      hardware: 'stainless', base: 'legless',  thicknesses: [10,12], heights: [1950,2100,2400] },
+  H: { code: 'H', name: 'Set H', desc: 'Luxury · floor-to-ceiling · C-channel',  hardware: 'stainless', base: 'ceiling',  thicknesses: [10,12], heights: [2400,2700,3000] },
+  D: { code: 'D', name: 'Set D', desc: 'Door · alu door frame · brick wall',       hardware: 'stainless', base: 'frame',    thicknesses: [10,12], heights: [2100] },
+  F: { code: 'F', name: 'Set F', desc: 'Front-only · brick wall + L-bracket',    hardware: 'nylon',     base: 'lbracket', thicknesses: [10,12], heights: [2100] },
+  E: { code: 'E', name: 'Set E', desc: 'Space-saving · Nylon (BK) · practical',  hardware: 'nylon',     base: 'foot',     thicknesses: [10,12], heights: [2000,2100,2400] },
+};
+
+const TILE_COLORS = [
+  { name: 'White',      wall: '#d9dbd8', floor: '#c9cbca' },
+  { name: 'Beige',      wall: '#d4c9b4', floor: '#c4b9a4' },
+  { name: 'Brown',      wall: '#8b7355', floor: '#7b6345' },
+  { name: 'Dark Brown', wall: '#5a4328', floor: '#4a3318' },
+  { name: 'Light Grey', wall: '#b5b7ba', floor: '#a5a7aa' },
+  { name: 'Dark Grey',  wall: '#5a5b5d', floor: '#4a4b4d' },
+  { name: 'Black',      wall: '#2a2b2d', floor: '#1a1b1d' },
+  { name: 'Light Blue', wall: '#b8cdd8', floor: '#a8bdc8' },
+  { name: 'Pink',       wall: '#e8c0c8', floor: '#d8b0b8' },
+];
+
+const state = {
+  series: 'N',
+  category: 'solid',
+  activeElement: 'door',
+  materials: {
+    door:    SOLID_SWATCHES[6],
+    divider: SOLID_SWATCHES[0],
+    front:   SOLID_SWATCHES[0],
+  },
+  height: 2100,
+  thickness: 12,
+  stalls: 3,
+  stallWidth: 900,
+  doorHeight: null,
+  tileColor: TILE_COLORS[2],
+};
+
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(state.tileColor.wall);
+scene.fog = new THREE.Fog(0x0a0e1a, 8, 25);
+
+const isMobile = window.matchMedia('(max-width: 900px)').matches;
+
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+const ISO_CAM = isMobile ? new THREE.Vector3(5.5, 4, 6.5) : new THREE.Vector3(4.5, 3.2, 5.5);
+camera.position.copy(ISO_CAM);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2;
+controls.maxDistance = 15;
+controls.maxPolarAngle = Math.PI / 2 - 0.05;
+controls.target.set(0, 1, 0);
+controls.enablePan = !isMobile;
+// THREE.TOUCH not available in r134 UMD — relies on defaults
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+const keyLight = new THREE.DirectionalLight(0xfff0d9, 1.1);
+keyLight.position.set(5, 8, 4);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
+keyLight.shadow.camera.left = -8; keyLight.shadow.camera.right = 8;
+keyLight.shadow.camera.top = 8; keyLight.shadow.camera.bottom = -8;
+keyLight.shadow.camera.near = 0.5; keyLight.shadow.camera.far = 25;
+keyLight.shadow.bias = -0.0003;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xb8d4f0, 0.4);
+fillLight.position.set(-5, 4, 3);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xc9a961, 0.3);
+rimLight.position.set(0, 3, -6);
+scene.add(rimLight);
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshStandardMaterial({ color: state.tileColor.floor, roughness: 0.85, metalness: 0.05 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const grid = new THREE.GridHelper(20, 40, 0x2a3040, 0x181d2a);
+grid.position.y = 0.001;
+scene.add(grid);
+
+const cubicleGroup = new THREE.Group();
+scene.add(cubicleGroup);
+
+function makePanelMaterial(swatch, isWood = false) {
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color(swatch.color),
+    roughness: isWood ? 0.7 : 0.5,
+    metalness: 0.05,
+  });
+}
+function makeHardwareMaterial(type) {
+  if (type === 'stainless') return new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.3, metalness: 0.85 });
+  return new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6, metalness: 0.2 });
+}
+function makeRailMaterial() {
+  return new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.4, metalness: 0.7 });
+}
+
+function buildCubicle() {
+  while (cubicleGroup.children.length) {
+    const obj = cubicleGroup.children[0];
+    cubicleGroup.remove(obj);
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) {
+      if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+      else obj.material.dispose();
+    }
+  }
+
+  const series = SERIES_DATA[state.series];
+  const isWoodDiv = WOOD_SWATCHES.includes(state.materials.divider);
+  const isWoodFront = WOOD_SWATCHES.includes(state.materials.front);
+  const isWoodDoor = WOOD_SWATCHES.includes(state.materials.door);
+
+  const doorMat = makePanelMaterial(state.materials.door, isWoodDoor);
+  const dividerMat = makePanelMaterial(state.materials.divider, isWoodDiv);
+  const frontMat = makePanelMaterial(state.materials.front, isWoodFront);
+  const hwMat = makeHardwareMaterial(series.hardware);
+  const railMat = makeRailMaterial();
+
+  const SCALE = 0.001;
+  const stallW = state.stallWidth * SCALE;
+  const depth = 1.4;
+  const overallH = state.height * SCALE;
+  const legH = (series.base === 'foot' || series.base === 'frame' || series.base === 'lbracket' || series.base === 'ceiling') ? 0.15 : 0;
+  const railH = 0.05;
+  const panelH = overallH - legH - railH;
+  const t = state.thickness * SCALE;
+
+  const totalStalls = state.stalls;
+  const totalWidth = totalStalls * stallW + (totalStalls + 1) * t;
+  const startX = -totalWidth / 2;
+
+  if (state.series === 'D') {
+    // Brick wall replaces dividers for Set D
+  } else if (state.series === 'F') {
+    // Set F: brick wall dividers 2100mm
+    const fBrickH = 2.1;
+    const fBrickMat = new THREE.MeshStandardMaterial({ color: 0x3a3f4e, roughness: 0.9, metalness: 0.0 });
+    for (let i = 0; i <= totalStalls; i++) {
+      const bx = startX + i * (stallW + t) + t/2;
+      const fw = new THREE.Mesh(new THREE.BoxGeometry(0.15, fBrickH, depth), fBrickMat);
+      fw.position.set(bx, fBrickH/2, 0);
+      fw.castShadow = true; fw.receiveShadow = true;
+      cubicleGroup.add(fw);
+    }
+  } else if (state.series === 'B') {
+    // Set B: divider raised 130mm at bottom, shirting fills the gap
+    const divH = panelH - 0.13;
+    for (let i = 0; i <= totalStalls; i++) {
+      const x = startX + i * (stallW + t) + t/2;
+      const div = new THREE.Mesh(new THREE.BoxGeometry(t, divH, depth), dividerMat);
+      div.position.set(x, legH + 0.13 + divH/2, 0);
+      div.castShadow = true; div.receiveShadow = true;
+      cubicleGroup.add(div);
+    }
+  } else {
+    for (let i = 0; i <= totalStalls; i++) {
+      const x = startX + i * (stallW + t) + t/2;
+      const div = new THREE.Mesh(new THREE.BoxGeometry(t, panelH, depth), dividerMat);
+      div.position.set(x, legH + panelH/2, 0);
+      div.castShadow = true; div.receiveShadow = true;
+      cubicleGroup.add(div);
+    }
+  }
+
+  const doorW = (state.series === 'D') ? stallW - 0.20 : stallW * 0.7;
+  const sideStripW = (stallW - doorW) / 2;
+
+  if (state.series === 'D') {
+    // Brick wall replaces divider panels (side partitions only)
+    const brickH = 2.1;
+    const brickMat = new THREE.MeshStandardMaterial({ color: 0x3a3f4e, roughness: 0.9, metalness: 0.0 });
+    // Brick wall at each divider position (replaces partition panels)
+    for (let i = 0; i <= totalStalls; i++) {
+      const bx = startX + i * (stallW + t) + t/2;
+      const bw = new THREE.Mesh(new THREE.BoxGeometry(0.15, brickH, depth), brickMat);
+      bw.position.set(bx, brickH/2, 0);
+      bw.castShadow = true; bw.receiveShadow = true;
+      cubicleGroup.add(bw);
+    }
+  } else {
+  for (let i = 0; i <= totalStalls; i++) {
+    const x = startX + i * (stallW + t) + t/2;
+    const leftEndH = (state.series === 'F') ? (state.doorHeight || 1.8) : panelH;
+    if (i === 0) {
+      const leftEnd = new THREE.Mesh(new THREE.BoxGeometry(sideStripW, leftEndH, t), frontMat);
+      leftEnd.position.set(x + t/2 + sideStripW/2, legH + leftEndH/2, depth/2);
+      leftEnd.castShadow = true; leftEnd.receiveShadow = true;
+      cubicleGroup.add(leftEnd);
+    } else if (i === totalStalls) {
+      const rightEnd = new THREE.Mesh(new THREE.BoxGeometry(sideStripW, leftEndH, t), frontMat);
+      rightEnd.position.set(x - t/2 - sideStripW/2, legH + leftEndH/2, depth/2);
+      rightEnd.castShadow = true; rightEnd.receiveShadow = true;
+      cubicleGroup.add(rightEnd);
+    } else {
+      // Center panel between doors (shared, no center line)
+      const cp = new THREE.Mesh(new THREE.BoxGeometry(stallW - doorW, leftEndH, t), frontMat);
+      cp.position.set(x, legH + leftEndH/2, depth/2);
+      cp.castShadow = true; cp.receiveShadow = true;
+      cubicleGroup.add(cp);
+    }
+  }
+
+
+  }  for (let i = 0; i < totalStalls; i++) {
+    const stallCenterX = startX + i * (stallW + t) + t + stallW/2;
+
+    const doorH = (() => {
+    if (state.series === "H") return Math.min(panelH * 0.92, 2.1);
+    if (state.series === "N" || state.series === "S") {
+      const gap = 0.025; // 25mm top gap
+      if (state.height === 2000) return Math.min(panelH, 1.8) - gap;
+      if (state.height === 2100) return Math.min(panelH, state.doorHeight || 1.9) - gap;
+      if (state.height === 2400) return Math.min(panelH, state.doorHeight || 2.1);
+    }
+    return panelH * 0.92;
+  })();
+    const doorGapBottom = (state.series === "B") ? 0.13 : 0;
+    const door = new THREE.Mesh(new THREE.BoxGeometry(doorW, doorH, t), doorMat);
+    door.position.set(stallCenterX, legH + doorGapBottom + doorH/2, depth/2);
+    door.castShadow = true; door.receiveShadow = true;
+    cubicleGroup.add(door);
+
+    // Door frame posts for Set D
+    if (state.series === 'D') {
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.6, metalness: 0.3 });
+      // Left frame post
+      const leftFrame = new THREE.Mesh(new THREE.BoxGeometry(0.03, doorH + 0.02, 0.06), frameMat);
+      leftFrame.position.set(startX + i * (stallW + t) + t/2 + 0.075, legH + doorGapBottom + (doorH + 0.02)/2, depth/2);
+      leftFrame.castShadow = true;
+      cubicleGroup.add(leftFrame);
+      // Right frame post
+      const rightFrame = new THREE.Mesh(new THREE.BoxGeometry(0.03, doorH + 0.02, 0.06), frameMat);
+      rightFrame.position.set(startX + i * (stallW + t) + t/2 + stallW - 0.075, legH + doorGapBottom + (doorH + 0.02)/2, depth/2);
+      rightFrame.castShadow = true;
+      cubicleGroup.add(rightFrame);
+    }
+    // Knob
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 16), hwMat);
+
+    const indicator = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.015, 16), hwMat);
+    indicator.rotation.x = Math.PI / 2;
+    indicator.position.set(stallCenterX - doorW/2 + 0.06, legH + panelH * 0.55, depth/2 + t/2 + 0.008);
+    cubicleGroup.add(indicator);
+  }
+
+if (series.base === 'foot') {
+    // Divider without leg, leg only apply for front panel
+    // Left/right end panel is 1 leg, center panel is double legs
+    for (let i = 0; i <= totalStalls; i++) {
+      const x = startX + i * (stallW + t) + t/2;
+      if (i === 0 || i === totalStalls) {
+        // End panels: 1 leg each
+        addLeg(x, depth/2 - 0.08, legH, hwMat);
+      } else {
+        // v2 - Center divider posts: double legs clamping the panel
+        addLeg(x - (stallW - doorW)/2 + 0.015, depth/2 - 0.08, legH, hwMat);
+        addLeg(x + (stallW - doorW)/2 - 0.015, depth/2 - 0.08, legH, hwMat);
+      }
+    }
+  } else if (series.base === 'frame') {
+    for (let i = 0; i <= totalStalls; i++) {
+      addLeg(startX + i * (stallW + t) + t/2, depth/2 - 0.08, legH, hwMat);
+    }
+  }
+
+  // Top rail: Set N/B/E black, Set S silver
+  if (['N','S','B','E'].includes(state.series)) {
+    let railColor;
+    if (state.series === 'S') {
+      railColor = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.3, metalness: 0.85 });
+    } else {
+      railColor = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6, metalness: 0.2 });
+    }
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(totalWidth, railH, 0.06), railColor);
+    rail.position.set(0, legH + panelH + railH/2, depth/2 - 0.03);
+    rail.castShadow = true;
+    cubicleGroup.add(rail);
+
+    // Side rails on top of left and right divider panels
+    const sideRailMat = (state.series === 'S')
+        ? new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.3, metalness: 0.85 })
+        : new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6, metalness: 0.2 });
+    // Left side rail (first divider position)
+    const leftSideRail = new THREE.Mesh(new THREE.BoxGeometry(t, railH, depth), sideRailMat);
+    leftSideRail.position.set(startX + t/2, legH + panelH + railH/2, 0);
+    leftSideRail.castShadow = true;
+    cubicleGroup.add(leftSideRail);
+    // Right side rail (last divider position)
+    const rightSideRail = new THREE.Mesh(new THREE.BoxGeometry(t, railH, depth), sideRailMat);
+    rightSideRail.position.set(startX + totalWidth - t/2, legH + panelH + railH/2, 0);
+    rightSideRail.castShadow = true;
+    cubicleGroup.add(rightSideRail);
+  }
+  // Black shirting 130mm for Set B (bottom of front panels + side dividers)
+  if (state.series === 'B') {
+    const shirtingH = 0.13;
+    const shirtingMat = new THREE.MeshBasicMaterial({ color: 0x000000, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    // Front panel shirting strips (same positions as front panels)
+    for (let j = 0; j <= totalStalls; j++) {
+      const sx = startX + j * (stallW + t) + t/2;
+      if (j === 0) {
+        // Left end shirting
+        const ls = new THREE.Mesh(new THREE.BoxGeometry(sideStripW, shirtingH, t), shirtingMat);
+        ls.position.set(sx + t/2 + sideStripW/2, shirtingH/2, depth/2);
+        ls.castShadow = true;
+        cubicleGroup.add(ls);
+      } else if (j === totalStalls) {
+        // Right end shirting
+        const rs = new THREE.Mesh(new THREE.BoxGeometry(sideStripW, shirtingH, t), shirtingMat);
+        rs.position.set(sx - t/2 - sideStripW/2, shirtingH/2, depth/2);
+        rs.castShadow = true;
+        cubicleGroup.add(rs);
+      } else {
+        // Center panel shirting
+        const cs = new THREE.Mesh(new THREE.BoxGeometry(stallW - doorW, shirtingH, t), shirtingMat);
+        cs.position.set(sx, shirtingH/2, depth/2);
+        cs.castShadow = true;
+        cubicleGroup.add(cs);
+      }
+    }
+    // Side divider shirting (left and right end panels)
+    const leftSide = new THREE.Mesh(new THREE.BoxGeometry(t, shirtingH, depth), shirtingMat);
+    leftSide.position.set(startX + t/2, shirtingH/2, 0);
+    leftSide.castShadow = true;
+    cubicleGroup.add(leftSide);
+    const rightSide = new THREE.Mesh(new THREE.BoxGeometry(t, shirtingH, depth), shirtingMat);
+    rightSide.position.set(startX + totalWidth - t/2, shirtingH/2, 0);
+    rightSide.castShadow = true;
+    cubicleGroup.add(rightSide);
+  }
+  if (state.series === 'H') {
+    const cH = 0.06;
+    const cChannel = new THREE.Mesh(
+      new THREE.BoxGeometry(totalWidth + 0.04, cH, depth + 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.35, metalness: 0.8 })
+    );
+    cChannel.position.set(0, legH + panelH + cH/2, 0);
+    cChannel.castShadow = true;
+    cubicleGroup.add(cChannel);
+  }
+
+  if (state.series === 'F') {
+    const bracketMat = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.3, metalness: 0.85 });
+    for (let i = 0; i <= totalStalls; i++) {
+      const x = startX + i * (stallW + t) + t/2;
+      const br = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.06), bracketMat);
+      br.position.set(x, legH + panelH - 0.04, depth/2 - 0.03);
+      br.castShadow = true;
+      cubicleGroup.add(br);
+    }
+  }
+}
+
+function addLeg(x, z, h, mat) {
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, h, 12), mat);
+  leg.position.set(x, h/2, z);
+  leg.castShadow = true;
+  cubicleGroup.add(leg);
+}
+
+// Sheet element references (defined early so peek functions can use them)
+const sidebar = document.getElementById('sidebar');
+const backdrop = document.getElementById('sheet-backdrop');
+const fab = document.getElementById('sheet-fab');
+const miniBar = document.getElementById('mobile-mini');
+const sheetClose = document.getElementById('sheet-close');
+
+const seriesGrid = document.getElementById('series-grid');
+Object.values(SERIES_DATA).forEach(s => {
+  const btn = document.createElement('button');
+  btn.className = 'series-btn' + (s.code === state.series ? ' active' : '');
+  btn.dataset.series = s.code;
+  btn.title = s.desc;
+  btn.innerHTML = `${s.code}<span class="label">Set</span>`;
+  btn.addEventListener('click', () => {
+    state.series = s.code;
+    document.querySelectorAll('.series-btn').forEach(b => b.classList.toggle('active', b.dataset.series === s.code));
+    if (!s.heights.includes(state.height)) state.height = s.heights[Math.floor(s.heights.length/2)];
+    if (["D","F"].includes(s.code) && !state.doorHeight) state.doorHeight = 1.8;
+    state.doorHeight = null;
+    if (!s.thicknesses.includes(state.thickness)) state.thickness = s.thicknesses[0];
+    refreshDimButtons();
+    refreshDoorHeight();
+    update();
+    flashCubicle();
+    if (typeof renderMobileCompact === 'function') renderMobileCompact();
+  });
+  seriesGrid.appendChild(btn);
+});
+
+let peekTimer = null;
+
+function flashCubicle() {
+  // Briefly bump the rim light to draw attention to the change
+  const original = rimLight.intensity;
+  rimLight.intensity = 1.4;
+  rimLight.color.setHex(0xffd97a);
+  setTimeout(() => {
+    rimLight.intensity = original;
+    rimLight.color.setHex(0xc9a961);
+  }, 600);
+}
+
+const swatchGrid = document.getElementById('swatch-grid');
+function renderSwatches() {
+  swatchGrid.innerHTML = '';
+  const list = state.category === 'solid' ? SOLID_SWATCHES : WOOD_SWATCHES;
+  const current = state.materials[state.activeElement];
+  list.forEach(sw => {
+    const div = document.createElement('div');
+    div.className = 'swatch' + (sw.code === current.code ? ' active' : '');
+    div.title = `${sw.code} · ${sw.name}`;
+    div.innerHTML = `<div class="swatch-fill" style="background:${sw.color}"></div><div class="swatch-code">${sw.code.replace('PCB ','')}</div>`;
+    div.addEventListener('click', () => {
+      state.materials[state.activeElement] = sw;
+      renderSwatches();
+      updateActiveChip();
+      update();
+      flashCubicle();
+      if (typeof renderMobileCompact === 'function') renderMobileCompact();
+    });
+    swatchGrid.appendChild(div);
+  });
+}
+
+document.querySelectorAll('.element-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    state.activeElement = tab.dataset.element;
+    document.querySelectorAll('.element-tab').forEach(t => t.classList.toggle('active', t === tab));
+    const m = state.materials[state.activeElement];
+    state.category = WOOD_SWATCHES.includes(m) ? 'wood' : 'solid';
+    document.querySelectorAll('.mat-toggle button').forEach(b => b.classList.toggle('active', b.dataset.cat === state.category));
+    renderSwatches();
+    updateActiveChip();
+  });
+});
+
+document.querySelectorAll('.mat-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.category = btn.dataset.cat;
+    document.querySelectorAll('.mat-toggle button').forEach(b => b.classList.toggle('active', b === btn));
+    renderSwatches();
+  });
+});
+
+function updateActiveChip() {
+  const m = state.materials[state.activeElement];
+  document.getElementById('active-chip').style.background = m.color;
+  document.getElementById('active-code').textContent = m.code;
+  document.getElementById('active-name').textContent = m.name;
+}
+
+function setTileColor(idx) {
+  state.tileColor = TILE_COLORS[idx];
+  scene.background = new THREE.Color(state.tileColor.wall);
+  if (floor.material) {
+    floor.material.color.set(state.tileColor.floor);
+    floor.material.needsUpdate = true;
+  }
+  renderTileChips();
+}
+
+function renderTileChips() {
+  const container = document.getElementById('tile-chips');
+  if (!container) return;
+  container.innerHTML = '';
+  TILE_COLORS.forEach((tc, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'tile-chip' + (tc === state.tileColor ? ' active' : '');
+    chip.style.background = tc.wall;
+    chip.title = tc.name;
+    chip.addEventListener('click', () => setTileColor(i));
+    container.appendChild(chip);
+  });
+}
+
+function refreshDimButtons() {
+  const series = SERIES_DATA[state.series];
+  document.querySelectorAll('#height-buttons .dim-btn').forEach(b => {
+    const h = parseInt(b.dataset.h);
+    b.disabled = !series.heights.includes(h);
+    b.style.opacity = series.heights.includes(h) ? '1' : '0.3';
+    b.classList.toggle('active', h === state.height);
+  });
+  document.querySelectorAll('#thick-buttons .dim-btn').forEach(b => {
+    const t = parseInt(b.dataset.t);
+    b.disabled = !series.thicknesses.includes(t);
+    b.style.opacity = series.thicknesses.includes(t) ? '1' : '0.3';
+    b.classList.toggle('active', t === state.thickness);
+  });
+}
+
+function refreshDoorHeight() {
+    const s = state.series;
+    const h = state.height;
+    let opts = [];
+    if (s === 'N' || s === 'S') {
+      if (h === 2000) opts = [1.8];
+      else if (h === 2100) opts = [1.8, 1.9];
+      else if (h === 2400) opts = [1.8, 2.1];
+    } else if (s === 'D') {
+      if (h === 2000 || h === 2100) opts = [1.8, 1.95];
+      else if (h === 2400) opts = [1.8, 1.95];
+    } else if (s === 'F') {
+      if (h === 2100) opts = [1.8, 1.95];
+      else if (h === 2400) opts = [1.8, 1.95];
+    } else if (s === 'B') {
+      if (h === 1950) opts = [1.77];
+      else if (h === 2100) opts = [1.8, 1.92];
+      else if (h === 2400) opts = [1.8, 2.1];
+    }
+    const container = document.getElementById('door-height-buttons');
+    const row = document.getElementById('door-height-row');
+    if (opts.length === 0) { row.style.display = 'none'; return; }
+    row.style.display = '';
+    container.innerHTML = '';
+    opts.forEach(dh => {
+      const btn = document.createElement('button');
+      btn.className = 'dim-btn' + ((!state.doorHeight || Math.abs(state.doorHeight - dh) < 0.001) ? ' active' : '');
+      btn.textContent = Math.round(dh * 1000) + 'mm';
+      btn.dataset.doorh = dh;
+      btn.addEventListener('click', () => {
+        state.doorHeight = dh;
+        container.querySelectorAll('.dim-btn').forEach(b => b.classList.toggle('active', Math.abs(parseFloat(b.dataset.doorh) - dh) < 0.001));
+        update();
+        if (typeof renderMobileCompact === 'function') renderMobileCompact();
+      });
+      container.appendChild(btn);
+    });
+  }
+
+document.querySelectorAll('#height-buttons .dim-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    if (b.disabled) return;
+    state.height = parseInt(b.dataset.h);
+    refreshDimButtons();
+    update();
+  });
+});
+document.querySelectorAll('#thick-buttons .dim-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    if (b.disabled) return;
+    state.thickness = parseInt(b.dataset.t);
+    refreshDimButtons();
+    update();
+  });
+});
+document.getElementById('stalls').addEventListener('input', e => {
+  state.stalls = parseInt(e.target.value);
+  document.getElementById('stalls-val').textContent = state.stalls;
+  update();
+});
+document.getElementById('width').addEventListener('input', e => {
+  state.stallWidth = parseInt(e.target.value);
+  document.getElementById('width-val').textContent = state.stallWidth + 'mm';
+  update();
+});
+
+document.querySelectorAll('.vc-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.vc-btn').forEach(b => b.classList.toggle('active', b === btn));
+    const view = btn.dataset.view;
+    const target = new THREE.Vector3(0, 1, 0);
+    const mob = window.matchMedia('(max-width: 900px)').matches;
+    let pos;
+    if (view === 'front')      pos = new THREE.Vector3(0, 1.4, mob ? 7 : 6);
+    else if (view === 'side')  pos = new THREE.Vector3(mob ? 8 : 7, 1.4, 0);
+    else if (view === 'plan')  pos = new THREE.Vector3(0.01, mob ? 9 : 8, 0.01);
+    else                       pos = (mob ? new THREE.Vector3(5.5, 4, 6.5) : new THREE.Vector3(4.5, 3.2, 5.5));
+    animateCamera(pos, target);
+  });
+});
+
+function animateCamera(targetPos, targetLookAt) {
+  const startPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const duration = 700;
+  const t0 = performance.now();
+  function step() {
+    const elapsed = performance.now() - t0;
+    const k = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - k, 3);
+    camera.position.lerpVectors(startPos, targetPos, ease);
+    controls.target.lerpVectors(startTarget, targetLookAt, ease);
+    if (k < 1) requestAnimationFrame(step);
+  }
+  step();
+}
+
+function sendWhatsApp() {
+  const text = encodeURIComponent(buildSpecText());
+  window.open(`https://wa.me/60165506664?text=${text}`, '_blank');
+}
+document.getElementById('whatsapp-btn').addEventListener('click', sendWhatsApp);
+document.getElementById('mini-cta').addEventListener('click', e => {
+  e.stopPropagation();
+  sendWhatsApp();
+});
+
+function openSheet() {
+  // Desktop only — mobile sidebar is always visible
+  if (window.matchMedia('(max-width: 900px)').matches) return;
+  sidebar.classList.add('open');
+  backdrop.classList.add('open');
+  backdrop.style.display = 'block';
+}
+function closeSheet() {
+  if (window.matchMedia('(max-width: 900px)').matches) return;
+  sidebar.classList.remove('open');
+  backdrop.classList.remove('open');
+  setTimeout(() => { backdrop.style.display = 'none'; }, 300);
+}
+
+function animateCameraTarget(targetLookAt) {
+  const startTarget = controls.target.clone();
+  const duration = 400;
+  const t0 = performance.now();
+  function step() {
+    const elapsed = performance.now() - t0;
+    const k = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - k, 3);
+    controls.target.lerpVectors(startTarget, targetLookAt, ease);
+    if (k < 1) requestAnimationFrame(step);
+  }
+  step();
+}
+
+fab.addEventListener('click', sendWhatsApp);
+miniBar.addEventListener('click', openSheet);
+backdrop.addEventListener('click', closeSheet);
+sheetClose.addEventListener('click', closeSheet);
+
+// Mobile sidebar stays locked at compact size — no expand behavior
+
+function buildSpecText() {
+  const s = SERIES_DATA[state.series];
+  const totalRunMm = state.stalls * state.stallWidth + (state.stalls + 1) * state.thickness;
+  return [
+    `*NBN Toilet Cubicle System — ${s.name} Enquiry*`,
+    ``,
+    `Series: ${s.name} (${s.desc})`,
+    `Overall Height: ${state.height}mm (incl. 150mm floor clearance)`,
+    `Panel Thickness: ${state.thickness}mm phenolic compact board`,
+    `Stalls: ${state.stalls} × ${state.stallWidth}mm wide`,
+    `Total Run: ~${totalRunMm}mm`,
+    ``,
+    `Door Finish: ${state.materials.door.code} ${state.materials.door.name}`,
+    `Divider Finish: ${state.materials.divider.code} ${state.materials.divider.name}`,
+    `Front Panel Finish: ${state.materials.front.code} ${state.materials.front.name}`,
+    `Accessories: ${s.hardware === 'stainless' ? 'Stainless Steel' : 'Nylon (BK)'}`,
+    ``,
+    `Please advise on lead time and pricing.`,
+  ].join('\n');
+}
+
+function updateSpecOutput() {
+  const s = SERIES_DATA[state.series];
+  const totalRunMm = state.stalls * state.stallWidth + (state.stalls + 1) * state.thickness;
+  document.getElementById('spec-output').innerHTML = `
+    <div class="spec-line"><strong>SERIES</strong> ${s.name}</div>
+    <div class="spec-line"><strong>OAH</strong> ${state.height}mm · <strong>T</strong> ${state.thickness}mm</div>
+    <div class="spec-line"><strong>STALLS</strong> ${state.stalls} × ${state.stallWidth}mm = ${totalRunMm}mm run</div>
+    <div class="spec-line"><strong>DOOR</strong> ${state.materials.door.code}</div>
+    <div class="spec-line"><strong>DIV</strong> ${state.materials.divider.code} · <strong>FRONT</strong> ${state.materials.front.code}</div>
+  `;
+}
+
+function updateConfigChip() {
+  const s = SERIES_DATA[state.series];
+  const totalRunMm = state.stalls * state.stallWidth + (state.stalls + 1) * state.thickness;
+  document.getElementById('chip-series').textContent = `SERIES · ${s.name.toUpperCase()}`;
+  document.getElementById('chip-name').textContent = s.name;
+  document.getElementById('chip-stat').innerHTML = `<span>${state.stalls}</span> stalls · <span>${state.height}mm</span> H · <span>${state.thickness}mm</span> panel · <span>${totalRunMm}mm</span> run`;
+  document.getElementById('series-desc').innerHTML = `<strong>${s.name}</strong> · ${s.desc}`;
+  document.getElementById('mini-name').textContent = s.name;
+  document.getElementById('mini-stats').innerHTML = `<span>${state.stalls}</span> stalls · <span>${state.height}mm</span><br><span>${state.thickness}mm</span> · <span>${totalRunMm}mm</span> run`;
+}
+
+function update() {
+  buildCubicle();
+  updateSpecOutput();
+  updateConfigChip();
+}
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') {
+    animateCamera(ISO_CAM.clone(), new THREE.Vector3(0,1,0));
+    document.querySelectorAll('.vc-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'iso'));
+  }
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+renderSwatches();
+updateActiveChip();
+update();
+animate();
+
+setTimeout(() => document.getElementById('loader').classList.add('hidden'), 300);
+
+/* ============================================================
+   MOBILE LAYOUT — Left rail (Series), Right rail (Element selector),
+   Color drawer (slides from right), Bottom bar (Size)
+   ============================================================ */
+
+// Helper: detect mobile breakpoint
+const isMobileNow = () => window.matchMedia('(max-width: 900px)').matches;
+
+// === LEFT RAIL — Series N to E ===
+function renderLeftRail() {
+  const rail = document.getElementById('mobile-left-rail');
+  if (!rail) return;
+  rail.innerHTML = '';
+  Object.values(SERIES_DATA).forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'mlr-btn' + (s.code === state.series ? ' active' : '');
+    btn.title = s.desc;
+    btn.innerHTML = `${s.code}<span class="mlr-btn-label">Set</span>`;
+    btn.addEventListener('click', () => {
+      state.series = s.code;
+      if (!s.heights.includes(state.height)) state.height = s.heights[Math.floor(s.heights.length/2)];
+      if (!s.thicknesses.includes(state.thickness)) state.thickness = s.thicknesses[0];
+      // Sync desktop UI
+      document.querySelectorAll('.series-btn').forEach(b => b.classList.toggle('active', b.dataset.series === s.code));
+      refreshDimButtons();
+      update();
+      flashCubicle();
+      renderLeftRail();
+      renderBottomSizeBar();
+    });
+    rail.appendChild(btn);
+  });
+}
+
+// === RIGHT RAIL — Door / Divider / Front. Tap → open color drawer ===
+function renderRightRail() {
+  // Update the color chip on each button to reflect current material
+  ['door', 'divider', 'front'].forEach(elem => {
+    const chipEl = document.getElementById(`mrr-chip-${elem}`);
+    if (chipEl) chipEl.style.background = state.materials[elem].color;
+  });
+  // Update active state
+  document.querySelectorAll('.mrr-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.element === state.activeElement && document.getElementById('mobile-color-drawer').classList.contains('open'));
+  });
+}
+
+document.querySelectorAll('.mrr-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const elem = btn.dataset.element;
+    state.activeElement = elem;
+    const m = state.materials[elem];
+    state.category = WOOD_SWATCHES.includes(m) ? 'wood' : 'solid';
+    // Sync desktop
+    document.querySelectorAll('.element-tab').forEach(t => t.classList.toggle('active', t.dataset.element === elem));
+    document.querySelectorAll('.mat-toggle button').forEach(b => b.classList.toggle('active', b.dataset.cat === state.category));
+    renderSwatches();
+    updateActiveChip();
+    openColorDrawer();
+  });
+});
+
+// === COLOR DRAWER — slides in from right ===
+function openColorDrawer() {
+  const drawer = document.getElementById('mobile-color-drawer');
+  drawer.classList.add('open');
+  document.getElementById('mcd-target').textContent = state.activeElement.charAt(0).toUpperCase() + state.activeElement.slice(1) + ' Color';
+  // Sync category toggle
+  document.querySelectorAll('.mcd-toggle button').forEach(b => b.classList.toggle('active', b.dataset.cat === state.category));
+  renderDrawerSwatches();
+  renderRightRail();
+}
+function closeColorDrawer() {
+  document.getElementById('mobile-color-drawer').classList.remove('open');
+  renderRightRail();
+}
+document.getElementById('mcd-close').addEventListener('click', closeColorDrawer);
+document.querySelectorAll('.mcd-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.category = btn.dataset.cat;
+    document.querySelectorAll('.mcd-toggle button').forEach(b => b.classList.toggle('active', b === btn));
+    // Sync desktop
+    document.querySelectorAll('.mat-toggle button').forEach(b => b.classList.toggle('active', b.dataset.cat === state.category));
+    renderDrawerSwatches();
+  });
+});
+
+function renderDrawerSwatches() {
+  const grid = document.getElementById('mcd-swatches');
+  grid.innerHTML = '';
+  const list = state.category === 'solid' ? SOLID_SWATCHES : WOOD_SWATCHES;
+  const currentMat = state.materials[state.activeElement];
+  list.forEach(sw => {
+    const div = document.createElement('div');
+    div.className = 'mcd-swatch' + (sw.code === currentMat.code ? ' active' : '');
+    div.title = `${sw.code} · ${sw.name}`;
+    div.innerHTML = `<div class="mcd-swatch-fill" style="background:${sw.color}"></div><div class="mcd-swatch-code">${sw.code.replace('PCB ','')}</div>`;
+    div.addEventListener('click', () => {
+      state.materials[state.activeElement] = sw;
+      // Sync desktop
+      renderSwatches();
+      updateActiveChip();
+      update();
+      flashCubicle();
+      showColorPreview(sw, state.activeElement);
+      renderDrawerSwatches();
+      renderRightRail();
+    });
+    grid.appendChild(div);
+  });
+}
+
+// === BOTTOM SIZE BAR (2 rows) ===
+function renderBottomSizeBar() {
+  const bar = document.getElementById('mobile-bottom-size');
+  if (!bar) return;
+  const series = SERIES_DATA[state.series];
+
+  let html = '';
+  
+  // Row 1: Heights + Thicknesses
+  html += '<div class="mobile-bottom-size-row">';
+  html += '<span class="mts-label">H</span>';
+  series.heights.forEach(h => {
+    html += `<button class="mts-pill ${h === state.height ? 'active' : ''}" data-h="${h}">${h}</button>`;
+  });
+  html += '<div class="mts-divider"></div>';
+  html += '<span class="mts-label">T</span>';
+  series.thicknesses.forEach(t => {
+    html += `<button class="mts-pill ${t === state.thickness ? 'active' : ''}" data-t="${t}">${t}mm</button>`;
+  });
+  html += '</div>';
+  
+  // Row 2: Stalls + Width sliders
+  html += '<div class="mobile-bottom-size-row">';
+  html += `<div class="mts-slider"><div class="mts-slider-label"><span>STALLS</span><span class="v" id="mts-stalls-v">${state.stalls}</span></div><input type="range" min="1" max="6" value="${state.stalls}" id="mts-stalls"></div>`;
+  html += `<div class="mts-slider"><div class="mts-slider-label"><span>WIDTH</span><span class="v" id="mts-width-v">${state.stallWidth}mm</span></div><input type="range" min="800" max="1500" step="50" value="${state.stallWidth}" id="mts-width"></div>`;
+  html += '</div>';
+  
+  bar.innerHTML = html;
+
+  bar.querySelectorAll('[data-h]').forEach(b => {
+    b.addEventListener('click', () => {
+      state.height = parseInt(b.dataset.h);
+      refreshDimButtons();
+      update();
+      flashCubicle();
+      renderBottomSizeBar();
+    });
+  });
+  bar.querySelectorAll('[data-t]').forEach(b => {
+    b.addEventListener('click', () => {
+      state.thickness = parseInt(b.dataset.t);
+      refreshDimButtons();
+      update();
+      flashCubicle();
+      renderBottomSizeBar();
+    });
+  });
+  document.getElementById('mts-stalls').addEventListener('input', e => {
+    state.stalls = parseInt(e.target.value);
+    document.getElementById('mts-stalls-v').textContent = state.stalls;
+    document.getElementById('stalls-val').textContent = state.stalls;
+    document.getElementById('stalls').value = state.stalls;
+    update();
+  });
+  document.getElementById('mts-width').addEventListener('input', e => {
+    state.stallWidth = parseInt(e.target.value);
+    document.getElementById('mts-width-v').textContent = state.stallWidth + 'mm';
+    document.getElementById('width-val').textContent = state.stallWidth + 'mm';
+    document.getElementById('width').value = state.stallWidth;
+    update();
+  });
+}
+
+// === COLOR PREVIEW POPUP ===
+let colorPreviewTimer = null;
+function showColorPreview(swatch, targetElement) {
+  if (!isMobileNow()) return;
+  const preview = document.getElementById('color-preview');
+  document.getElementById('cp-chip').style.background = swatch.color;
+  document.getElementById('cp-code').textContent = swatch.code;
+  document.getElementById('cp-name').textContent = swatch.name;
+  document.getElementById('cp-target').textContent = `applied to ${targetElement}`;
+  preview.classList.add('visible');
+  if (colorPreviewTimer) clearTimeout(colorPreviewTimer);
+  colorPreviewTimer = setTimeout(() => {
+    preview.classList.remove('visible');
+  }, 1400);
+}
+
+// Initial mobile render
+renderLeftRail();
+renderRightRail();
+renderBottomSizeBar();
+
+// Compatibility aliases for any leftover desktop-side calls
+function renderMobileCompact() {
+  renderLeftRail();
+  renderRightRail();
+  renderBottomSizeBar();
+}
+
+// Mobile sidebar stays locked at compact size — no expand behavior
+
+function buildSpecText() {
+  const s = SERIES_DATA[state.series];
+  const totalRunMm = state.stalls * state.stallWidth + (state.stalls + 1) * state.thickness;
+  return [
+    `*NBN Toilet Cubicle System — ${s.name} Enquiry*`,
+    ``,
+    `Series: ${s.name} (${s.desc})`,
+    `Overall Height: ${state.height}mm (incl. 150mm floor clearance)`,
+    `Panel Thickness: ${state.thickness}mm phenolic compact board`,
+    `Stalls: ${state.stalls} × ${state.stallWidth}mm wide`,
+    `Total Run: ~${totalRunMm}mm`,
+    ``,
+    `Door Finish: ${state.materials.door.code} ${state.materials.door.name}`,
+    `Divider Finish: ${state.materials.divider.code} ${state.materials.divider.name}`,
+    `Front Panel Finish: ${state.materials.front.code} ${state.materials.front.name}`,
+    `Accessories: ${s.hardware === 'stainless' ? 'Stainless Steel' : 'Nylon (BK)'}`,
+    ``,
+    `Please advise on lead time and pricing.`,
+  ].join('\n');
+}
+
+function updateSpecOutput() {
+  const s = SERIES_DATA[state.series];
+  const totalRunMm = state.stalls * state.stallWidth + (state.stalls + 1) * state.thickness;
+  document.getElementById('spec-output').innerHTML = `
+    <div class="spec-line"><strong>SERIES</strong> ${s.name}</div>
+    <div class="spec-line"><strong>OAH</strong> ${state.height}mm · <strong>T</strong> ${state.thickness}mm</div>
+    <div class="spec-line"><strong>STALLS</strong> ${state.stalls} × ${state.stallWidth}mm = ${totalRunMm}mm run</div>
+    <div class="spec-line"><strong>DOOR</strong> ${state.materials.door.code}</div>
+    <div class="spec-line"><strong>DIV</strong> ${state.materials.divider.code} · <strong>FRONT</strong> ${state.materials.front.code}</div>
+  `;
+}
+
+function updateConfigChip() {
+  const s = SERIES_DATA[state.series];
+  const totalRunMm = state.stalls * state.stallWidth + (state.stalls + 1) * state.thickness;
+  document.getElementById('chip-series').textContent = `SERIES · ${s.name.toUpperCase()}`;
+  document.getElementById('chip-name').textContent = s.name;
+  document.getElementById('chip-stat').innerHTML = `<span>${state.stalls}</span> stalls · <span>${state.height}mm</span> H · <span>${state.thickness}mm</span> panel · <span>${totalRunMm}mm</span> run`;
+  document.getElementById('series-desc').innerHTML = `<strong>${s.name}</strong> · ${s.desc}`;
+  document.getElementById('mini-name').textContent = s.name;
+  document.getElementById('mini-stats').innerHTML = `<span>${state.stalls}</span> stalls · <span>${state.height}mm</span><br><span>${state.thickness}mm</span> · <span>${totalRunMm}mm</span> run`;
+}
+
+function update() {
+  buildCubicle();
+  updateSpecOutput();
+  updateConfigChip();
+}
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'r' || e.key === 'R') {
+    animateCamera(ISO_CAM.clone(), new THREE.Vector3(0,1,0));
+    document.querySelectorAll('.vc-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'iso'));
+  }
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+renderSwatches();
+renderTileChips();
+updateActiveChip();
+update();
+animate();
+
+setTimeout(() => document.getElementById('loader').classList.add('hidden'), 300);
+
+} // end initApp
+</script>
+</body>
+</html>
