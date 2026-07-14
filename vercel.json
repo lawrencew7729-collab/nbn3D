@@ -1,0 +1,12 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)\\.(glb|gltf|bin|js|css)$",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "https://www.nbn.com.my" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, HEAD, OPTIONS" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ]
+}
